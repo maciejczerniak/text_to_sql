@@ -201,7 +201,7 @@ try:
             margin: 4px 0 12px;
         }}
         .sidebar-logo img {{
-            width: 160px;
+            width: 180px;
             border: 0px solid #4FC3F7;
         }}
         </style>
