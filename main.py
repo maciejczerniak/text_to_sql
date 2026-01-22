@@ -169,13 +169,16 @@ if not db_url:
 
 st.title("Text-to-SQL Chat")
 db_display_name = get_db_display_name(db_url)
-st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
-show_chart = st.toggle(
-    "Plot results",
-    value=False,
-    key="show_chart",
-    help="Render a chart for numeric results or when your question asks for a chart.",
-)
+meta_col, toggle_col = st.columns([4, 1])
+with meta_col:
+    st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
+with toggle_col:
+    show_chart = st.toggle(
+        "Plot results",
+        value=False,
+        key="show_chart",
+        help="Render a chart for numeric results or when your question asks for a chart.",
+    )
 # Inform the user when charts are disabled.
 if not charts_available():
     st.caption("Charts disabled until pandas and plotly are installed.")
