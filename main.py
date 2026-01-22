@@ -120,7 +120,7 @@ def query_with_retries(
     return {"sql": sql, "rows": None, "error": f"Query failed: {last_error}"}
 
 
-st.set_page_config(page_title="Text-to-SQL Chat")
+st.set_page_config(page_title="Text-to-SQL Chat", initial_sidebar_state="expanded")
 
 # Model and retry settings.
 OLLAMA_MODEL = get_setting("OLLAMA_MODEL")
