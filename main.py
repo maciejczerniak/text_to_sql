@@ -121,6 +121,16 @@ def query_with_retries(
 
 
 st.set_page_config(page_title="Text-to-SQL Chat", initial_sidebar_state="expanded")
+st.markdown(
+    """
+    <style>
+    [data-testid="collapsedControl"] {
+        display: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Model and retry settings.
 OLLAMA_MODEL = get_setting("OLLAMA_MODEL")
@@ -169,45 +179,24 @@ except Exception as exc:
     st.error(f"Could not load schema: {exc}")
     st.stop()
 
-# Sidebar schema browser.
-st.sidebar.header("Database schema")
-st.sidebar.caption("Click a table to see its columns.")
-for table_name in sorted(schema.keys()):
-    with st.sidebar.expander(table_name):
-        st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
+# Sidebar logo at the top.
 logo_path = os.path.join(os.path.dirname(__file__), "img", "alternate.png")
 try:
     with open(logo_path, "rb") as handle:
         logo_b64 = base64.b64encode(handle.read()).decode("utf-8")
-    st.markdown(
-        """
-        <style>
-        section[data-testid="stSidebar"] > div:first-child {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        div[data-testid="stSidebarContent"] {
-            display: flex;
-            flex-direction: column;
-            flex: 1 1 auto;
-        }
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 12px 0;
-            text-align: center;
-        }
-        .sidebar-footer img {
-            width: 160px;
-            border: 0px solid #4FC3F7;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
     st.sidebar.markdown(
         f"""
-        <div class="sidebar-footer">
+        <style>
+        .sidebar-logo {{
+            text-align: center;
+            margin: 4px 0 12px;
+        }}
+        .sidebar-logo img {{
+            width: 160px;
+            border: 0px solid #4FC3F7;
+        }}
+        </style>
+        <div class="sidebar-logo">
             <a href="https://alternate.nl" target="_blank" rel="noopener noreferrer">
                 <img src="data:image/png;base64,{logo_b64}" alt="alternate.nl" />
             </a>
@@ -217,6 +206,13 @@ try:
     )
 except FileNotFoundError:
     pass
+
+# Sidebar schema browser.
+st.sidebar.header("Database schema")
+st.sidebar.caption("Click a table to see its columns.")
+for table_name in sorted(schema.keys()):
+    with st.sidebar.expander(table_name):
+        st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
 
 # Initialize chat history once.
 if "messages" not in st.session_state:
