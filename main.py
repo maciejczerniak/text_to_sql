@@ -136,6 +136,13 @@ st.markdown(
     button[aria-label="Open sidebar"] {
         display: none;
     }
+    div[data-testid="stVerticalBlock"]:has(#plot-toggle-anchor) {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: var(--background-color, white);
+        padding: 6px 0;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -169,16 +176,18 @@ if not db_url:
 
 st.title("Text-to-SQL Chat")
 db_display_name = get_db_display_name(db_url)
-meta_col, toggle_col = st.columns([4, 1])
-with meta_col:
-    st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
-with toggle_col:
-    show_chart = st.toggle(
-        "Plot results",
-        value=False,
-        key="show_chart",
-        help="Render a chart for numeric results or when your question asks for a chart.",
-    )
+with st.container():
+    st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
+    meta_col, toggle_col = st.columns([4, 1], vertical_alignment="center")
+    with meta_col:
+        st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
+    with toggle_col:
+        show_chart = st.toggle(
+            "Plot results",
+            value=False,
+            key="show_chart",
+            help="Render a chart for numeric results or when your question asks for a chart.",
+        )
 # Inform the user when charts are disabled.
 if not charts_available():
     st.caption("Charts disabled until pandas and plotly are installed.")
