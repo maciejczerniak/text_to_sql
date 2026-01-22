@@ -120,7 +120,7 @@ def query_with_retries(
     return {"sql": sql, "rows": None, "error": f"Query failed: {last_error}"}
 
 
-st.set_page_config(page_title="Text-to-SQL Chat", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Query Assistant", initial_sidebar_state="expanded")
 st.markdown(
     """
     <style>
@@ -174,7 +174,7 @@ if not db_url:
     )
     st.stop()
 
-st.title("Text-to-SQL Chat")
+st.title("Query Assistant")
 db_display_name = get_db_display_name(db_url)
 with st.container():
     st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
