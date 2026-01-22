@@ -179,29 +179,33 @@ logo_path = os.path.join(os.path.dirname(__file__), "img", "alternate.png")
 try:
     with open(logo_path, "rb") as handle:
         logo_b64 = base64.b64encode(handle.read()).decode("utf-8")
-    st.sidebar.markdown(
-        f"""
+    st.markdown(
+        """
         <style>
-        [data-testid="stSidebar"] > div:first-child {{
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }}
-        [data-testid="stSidebarContent"] {{
-            display: flex;
-            flex-direction: column;
-            flex: 1 1 auto;
-        }}
-        .sidebar-footer {{
-            margin-top: auto;
-            padding: 12px 0;
+        section[data-testid="stSidebar"] {
+            position: relative;
+        }
+        section[data-testid="stSidebar"] > div {
+            padding-bottom: 140px;
+        }
+        .sidebar-footer {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
             text-align: center;
-        }}
-        .sidebar-footer img {{
+            z-index: 1000;
+        }
+        .sidebar-footer img {
             width: 160px;
             border: 0px solid #4FC3F7;
-        }}
+        }
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        f"""
         <div class="sidebar-footer">
             <a href="https://alternate.nl" target="_blank" rel="noopener noreferrer">
                 <img src="data:image/png;base64,{logo_b64}" alt="alternate.nl" />
