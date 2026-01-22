@@ -178,7 +178,7 @@ st.title("Text-to-SQL Chat")
 db_display_name = get_db_display_name(db_url)
 with st.container():
     st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
-    meta_col, toggle_col = st.columns([4, 1], vertical_alignment="center")
+    meta_col, toggle_col = st.columns([4, 1.5], vertical_alignment="center")
     with meta_col:
         st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
     with toggle_col:
