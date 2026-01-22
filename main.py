@@ -182,20 +182,22 @@ try:
     st.sidebar.markdown(
         f"""
         <style>
+        [data-testid="stSidebar"] {{
+            position: relative;
+        }}
         [data-testid="stSidebar"] > div:first-child {{
-            display: flex;
-            flex-direction: column;
-            height: 100%;
+            padding-bottom: 140px;
         }}
         .sidebar-footer {{
-            margin-top: auto;
-            padding: 12px 0;
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 100%;
             text-align: center;
         }}
         .sidebar-footer img {{
             width: 160px;
-            border-radius: 40px;
-            border: 4px solid #4FC3F7;
+            border: 0px solid #4FC3F7;
         }}
         </style>
         <div class="sidebar-footer">
