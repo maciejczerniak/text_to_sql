@@ -1,7 +1,8 @@
+import base64
 import json
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlsplit
 
 # Text-to-SQL pipeline:
@@ -39,6 +40,45 @@ def get_db_display_name(db_url: str) -> str:
     if parsed.path:
         return parsed.path.lstrip("/") or "database"
     return "database"
+
+
+def needs_clarification(question: str, schema: Dict[str, List[str]]) -> Optional[str]:
+    """Return a clarification prompt when the question is too vague."""
+    tokens = re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", question.lower())
+    if len(tokens) < 3:
+        return "Could you clarify your question with more detail?"
+    schema_terms = {name.lower() for name in schema.keys()}
+    for cols in schema.values():
+        schema_terms.update(col.lower() for col in cols)
+    mentions_schema = any(tok in schema_terms for tok in tokens)
+    generic = {"show", "list", "data", "info", "details", "report", "stats", "summary", "everything", "all", "overview"}
+    has_generic = any(tok in generic for tok in tokens)
+    has_filter = any(
+        tok in {"count", "average", "avg", "min", "max", "sum", "total", "range", "between", "before", "after", "since",
+                "during", "latest", "last", "top", "bottom", "most", "least"}
+        for tok in tokens
+    ) or bool(re.search(r"\d", question))
+    if has_generic and not mentions_schema and not has_filter:
+        table_names = sorted(schema.keys())[:3]
+        if table_names:
+            examples = ", ".join(table_names)
+            return (
+                "Could you clarify what you want to see? "
+                f"For example, ask about {examples}, or specify a metric and time range."
+            )
+        return "Could you clarify what you want to see? Please specify a metric and any filters."
+    return None
+
+
+def render_sql_button(sql: str, index: int) -> None:
+    """Show a small button to reveal the SQL for a response."""
+    state_key = f"show_sql_{index}"
+    if state_key not in st.session_state:
+        st.session_state[state_key] = False
+    if st.button("Show SQL", key=f"{state_key}_btn"):
+        st.session_state[state_key] = not st.session_state[state_key]
+    if st.session_state[state_key]:
+        st.code(sql, wrap_lines=True, language="sql")
 
 # Run SQL with retry loops and model-based fixes.
 def query_with_retries(
@@ -111,13 +151,6 @@ if not db_url:
 st.title("Text-to-SQL Chat")
 db_display_name = get_db_display_name(db_url)
 st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
-# "Show your work" reveals the SQL after the answer.
-show_work = st.toggle(
-    "Show your work",
-    value=False,
-    key="show_work",
-    help="Show the generated SQL after each answer.",
-)
 show_chart = st.toggle(
     "Plot results",
     value=False,
@@ -142,6 +175,39 @@ st.sidebar.caption("Click a table to see its columns.")
 for table_name in sorted(schema.keys()):
     with st.sidebar.expander(table_name):
         st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
+logo_path = os.path.join(os.path.dirname(__file__), "img", "alternate.png")
+try:
+    with open(logo_path, "rb") as handle:
+        logo_b64 = base64.b64encode(handle.read()).decode("utf-8")
+    st.sidebar.markdown(
+        f"""
+        <style>
+        [data-testid="stSidebar"] > div:first-child {{
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }}
+        .sidebar-footer {{
+            margin-top: auto;
+            padding: 12px 0;
+            text-align: center;
+        }}
+        .sidebar-footer img {{
+            width: 160px;
+            border-radius: 40px;
+            border: 4px solid #4FC3F7;
+        }}
+        </style>
+        <div class="sidebar-footer">
+            <a href="https://alternate.nl" target="_blank" rel="noopener noreferrer">
+                <img src="data:image/png;base64,{logo_b64}" alt="alternate.nl" />
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+except FileNotFoundError:
+    pass
 
 # Initialize chat history once.
 if "messages" not in st.session_state:
@@ -153,13 +219,14 @@ if "messages" not in st.session_state:
                 "Examples: \"How many orders were placed last month?\", "
                 "\"What is the range of order date?\". "
                 "If you want a chart, include words like \"plot\" or use the "
-                "\"Plot results\" toggle."
+                "\"Plot results\" toggle. Use the \"Show SQL\" button to see "
+                "the query behind each answer."
             ),
         }
     ]
 
 # Re-render chat history.
-for message in st.session_state.messages:
+for idx, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         # Only render extra details for assistant messages.
@@ -170,9 +237,9 @@ for message in st.session_state.messages:
             # Show prior error if present.
             if message.get("error"):
                 st.error(message["error"])
-            # Optionally show SQL last.
-            if show_work and message.get("sql"):
-                st.code(message["sql"], wrap_lines=True, language="sql")
+            # Optional SQL reveal.
+            if message.get("sql"):
+                render_sql_button(message["sql"], idx)
 
 user_prompt = st.chat_input("Ask about your data")
 # Only process when the user submits a question.
@@ -181,6 +248,12 @@ if user_prompt:
     # Render the just-submitted question in the current run.
     with st.chat_message("user"):
         st.markdown(user_prompt)
+    clarification = needs_clarification(user_prompt, schema)
+    if clarification:
+        with st.chat_message("assistant"):
+            st.markdown(clarification)
+        st.session_state.messages.append({"role": "assistant", "content": clarification})
+        st.stop()
     with st.chat_message("assistant"):
         with st.spinner("Generating SQL..."):
             result = query_with_retries(
@@ -225,9 +298,7 @@ if user_prompt:
                 answer = f"I could not generate an answer: {exc}"
         st.markdown(answer)
         render_results(rows, show_chart=plot_requested)
-        # SQL appears last when "Show your work" is enabled.
-        if show_work:
-            st.code(sql, wrap_lines=True, language="sql")
+        render_sql_button(sql, len(st.session_state.messages))
 
         st.session_state.messages.append(
             {
