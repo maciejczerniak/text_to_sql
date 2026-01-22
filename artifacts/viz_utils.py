@@ -67,8 +67,8 @@ def build_chart(df):
 
 
 # Render tabular data plus an optional chart.
-def render_results(rows: List[Dict[str, Any]]) -> None:
-    """Display results as a table and a chart when feasible."""
+def render_results(rows: List[Dict[str, Any]], show_chart: bool = False) -> None:
+    """Display results as a table and an optional chart."""
     # Show rows if we have any.
     if rows:
         # Without pandas, render the list of dicts directly.
@@ -77,9 +77,10 @@ def render_results(rows: List[Dict[str, Any]]) -> None:
             return
         df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True)
-        fig = build_chart(df)
-        # Only render a chart if we could build one.
-        if fig is not None:
-            st.plotly_chart(fig, use_container_width=True)
+        # Only render a chart when explicitly requested.
+        if show_chart:
+            fig = build_chart(df)
+            if fig is not None:
+                st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No rows returned.")
