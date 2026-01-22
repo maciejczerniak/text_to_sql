@@ -209,6 +209,16 @@ except FileNotFoundError:
 
 # Sidebar schema browser.
 st.sidebar.header("Database schema")
+st.markdown(
+    """
+    <style>
+    [data-testid="collapsedControl"] {
+        display: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.sidebar.caption("Click a table to see its columns.")
 for table_name in sorted(schema.keys()):
     with st.sidebar.expander(table_name):
