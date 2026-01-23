@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 import streamlit as st
 import streamlit.components.v1 as components
 from langchain_ollama.llms import OllamaLLM
+import pandas as pd
+import plotly.express as px
 
 from artifacts.config_utils import build_db_url, get_setting, load_dotenv_file
 from artifacts.db_utils import extract_schema, run_query
