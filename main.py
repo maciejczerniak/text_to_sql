@@ -140,6 +140,13 @@ st.markdown(
     button[aria-label="Open sidebar"] {
         display: none;
     }
+    div[data-testid="stHorizontalBlock"]:has(#plot-toggle-anchor) {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: var(--background-color, white);
+        padding: 6px 0;
+    }
     .plot-toggle-row {
         position: sticky;
         top: 0;
@@ -181,9 +188,9 @@ if not db_url:
 st.title("Query Assistant")
 db_display_name = get_db_display_name(db_url)
 with st.container():
-    st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
     meta_col, toggle_col = st.columns([4, 1.5], vertical_alignment="center")
     with meta_col:
+        st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
         st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
     with toggle_col:
         show_chart = st.toggle(
@@ -197,7 +204,7 @@ components.html(
     <script>
     const anchor = window.parent.document.getElementById("plot-toggle-anchor");
     if (anchor) {
-        const block = anchor.closest('div[data-testid="stVerticalBlock"]');
+        const block = anchor.closest('div[data-testid="stHorizontalBlock"]');
         if (block && !block.classList.contains("plot-toggle-row")) {
             block.classList.add("plot-toggle-row");
         }
