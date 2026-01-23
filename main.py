@@ -13,8 +13,11 @@ from urllib.parse import urlsplit
 import streamlit as st
 import streamlit.components.v1 as components
 from langchain_ollama.llms import OllamaLLM
-import pandas as pd
-import plotly.express as px
+
+try:
+    from streamlit_option_menu import option_menu
+except ImportError:
+    option_menu = None
 
 from artifacts.config_utils import build_db_url, get_setting, load_dotenv_file
 from artifacts.db_utils import extract_schema, run_query
@@ -142,7 +145,9 @@ st.markdown(
     """
     <style>
     :root {
-        --right-sidebar-width: 320px;
+        --header-height: 130px;
+        --footer-height: 16px;
+        --input-height: 90px;
     }
     [data-testid="collapsedControl"] {
         display: none;
@@ -156,39 +161,47 @@ st.markdown(
     button[aria-label="Open sidebar"] {
         display: none;
     }
-    .right-sidebar {
-        position: fixed !important;
-        top: 0 !important;
-        right: 0 !important;
-        width: var(--right-sidebar-width) !important;
-        height: 100vh !important;
-        overflow-y: auto !important;
-        padding: 12px 16px !important;
-        background: var(--background-color, white) !important;
-        border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
-        box-sizing: border-box !important;
+    .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: var(--background-color, white);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 8px 0 6px;
     }
-    .main-column {
-        flex: 1 1 auto !important;
-        width: calc(100% - var(--right-sidebar-width) - 24px) !important;
-        max-width: calc(100% - var(--right-sidebar-width) - 24px) !important;
+    .app-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+    }
+    .app-meta {
+        color: rgba(0, 0, 0, 0.6);
+        font-size: 0.85rem;
+    }
+    .chat-scroll {
+        overflow-y: auto;
+        max-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--input-height));
+        padding-right: 8px;
+    }
+    .app-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: var(--footer-height);
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        background: var(--background-color, white);
+        z-index: 999;
     }
     section.main > div {
-        padding-right: calc(var(--right-sidebar-width) + 24px);
+        padding-bottom: calc(var(--footer-height) + 16px);
         box-sizing: border-box;
     }
-    @media (max-width: 1100px) {
-        .right-sidebar {
-            position: static;
-            width: auto;
-            height: auto;
-            border-left: none;
-            padding: 0;
-        }
-        .main-column {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
+    div[data-testid="stChatInput"] {
+        position: sticky;
+        bottom: var(--footer-height);
+        background: var(--background-color, white);
+        padding-top: 8px;
     }
     </style>
     """,
@@ -222,50 +235,44 @@ if not db_url:
     st.stop()
 
 db_display_name = get_db_display_name(db_url)
-main_col, right_col = st.columns([3.4, 1.1], gap="large")
-with right_col:
-    st.markdown('<div id="right-sidebar-anchor"></div>', unsafe_allow_html=True)
-    st.title("Query Assistant")
-    st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
-    show_chart = st.toggle(
-        "Plot results",
-        value=False,
-        key="show_chart",
-        help="Render a chart for numeric results or when your question asks for a chart.",
-    )
-    if not charts_available():
-        st.caption("Charts disabled until pandas and plotly are installed.")
-    if st.button("Clear chat", use_container_width=True):
-        st.session_state.messages = [DEFAULT_GREETING]
-        st.rerun()
+header_container = st.container()
+with header_container:
+    st.markdown('<div id="header-anchor"></div>', unsafe_allow_html=True)
+    header_left, header_right = st.columns([3.2, 1.2], vertical_alignment="center")
+    with header_left:
+        if option_menu:
+            option_menu(
+                None,
+                ["Chat"],
+                icons=["chat"],
+                orientation="horizontal",
+                styles={
+                    "container": {"padding": "0!important", "background-color": "transparent"},
+                    "nav-link": {"font-size": "0.85rem", "padding": "0 8px"},
+                    "nav-link-selected": {"font-weight": "600"},
+                },
+            )
+        st.markdown('<div class="app-title">Query Assistant</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="app-meta">Model: {OLLAMA_MODEL} | Database: {db_display_name}</div>',
+            unsafe_allow_html=True,
+        )
+        if option_menu is None:
+            st.caption("Install `streamlit-option-menu` to enable the top navigation bar.")
+    with header_right:
+        show_chart = st.toggle(
+            "Plot results",
+            value=False,
+            key="show_chart",
+            help="Render a chart for numeric results or when your question asks for a chart.",
+        )
+        if not charts_available():
+            st.caption("Charts disabled until pandas and plotly are installed.")
+        if st.button("Clear chat", use_container_width=True):
+            st.session_state.messages = [DEFAULT_GREETING]
+            st.rerun()
 
-components.html(
-    """
-    <script>
-    const start = Date.now();
-    const timer = setInterval(() => {
-        const rightAnchor = window.parent.document.getElementById("right-sidebar-anchor");
-        if (rightAnchor) {
-            const col = rightAnchor.closest('div[data-testid="column"]');
-            if (col && !col.classList.contains("right-sidebar")) {
-                col.classList.add("right-sidebar");
-            }
-        }
-        const mainAnchor = window.parent.document.getElementById("main-column-anchor");
-        if (mainAnchor) {
-            const col = mainAnchor.closest('div[data-testid="column"]');
-            if (col && !col.classList.contains("main-column")) {
-                col.classList.add("main-column");
-            }
-        }
-        if ((rightAnchor && mainAnchor) || Date.now() - start > 3000) {
-            clearInterval(timer);
-        }
-    }, 50);
-    </script>
-    """,
-    height=0,
-)
+st.markdown('<div class="app-footer"></div>', unsafe_allow_html=True)
 
 # Load schema once for the prompt and safety checks.
 try:
@@ -311,8 +318,9 @@ for table_name in sorted(schema.keys()):
     with st.sidebar.expander(table_name):
         st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
 
-with main_col:
-    st.markdown('<div id="main-column-anchor"></div>', unsafe_allow_html=True)
+chat_container = st.container()
+with chat_container:
+    st.markdown('<div id="chat-scroll-anchor"></div>', unsafe_allow_html=True)
     # Initialize chat history once.
     if "messages" not in st.session_state:
         st.session_state.messages = [DEFAULT_GREETING]
@@ -333,19 +341,50 @@ with main_col:
                 if message.get("sql"):
                     render_sql_button(message["sql"], idx)
 
-    user_prompt = st.chat_input("Ask about your data")
-    # Only process when the user submits a question.
-    if user_prompt:
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        # Render the just-submitted question in the current run.
+components.html(
+    """
+    <script>
+    const start = Date.now();
+    const timer = setInterval(() => {
+        const headerAnchor = window.parent.document.getElementById("header-anchor");
+        if (headerAnchor) {
+            const block = headerAnchor.closest('div[data-testid="stVerticalBlock"]');
+            if (block && !block.classList.contains("app-header")) {
+                block.classList.add("app-header");
+            }
+        }
+        const chatAnchor = window.parent.document.getElementById("chat-scroll-anchor");
+        if (chatAnchor) {
+            const block = chatAnchor.closest('div[data-testid="stVerticalBlock"]');
+            if (block && !block.classList.contains("chat-scroll")) {
+                block.classList.add("chat-scroll");
+            }
+        }
+        if ((headerAnchor && chatAnchor) || Date.now() - start > 3000) {
+            clearInterval(timer);
+        }
+    }, 50);
+    </script>
+    """,
+    height=0,
+)
+
+user_prompt = st.chat_input("Ask about your data")
+# Only process when the user submits a question.
+if user_prompt:
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    # Render the just-submitted question in the current run.
+    with chat_container:
         with st.chat_message("user"):
             st.markdown(user_prompt)
-        clarification = needs_clarification(user_prompt, schema)
-        if clarification:
+    clarification = needs_clarification(user_prompt, schema)
+    if clarification:
+        with chat_container:
             with st.chat_message("assistant"):
                 st.markdown(clarification)
-            st.session_state.messages.append({"role": "assistant", "content": clarification})
-            st.stop()
+        st.session_state.messages.append({"role": "assistant", "content": clarification})
+        st.stop()
+    with chat_container:
         with st.chat_message("assistant"):
             with st.spinner("Generating SQL..."):
                 result = query_with_retries(
