@@ -157,21 +157,25 @@ st.markdown(
         display: none;
     }
     .right-sidebar {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: var(--right-sidebar-width);
-        height: 100vh;
-        overflow-y: auto;
-        padding: 12px 16px;
-        background: var(--background-color, white);
-        border-left: 1px solid rgba(0, 0, 0, 0.08);
-        box-sizing: border-box;
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        width: var(--right-sidebar-width) !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        padding: 12px 16px !important;
+        background: var(--background-color, white) !important;
+        border-left: 1px solid rgba(0, 0, 0, 0.08) !important;
+        box-sizing: border-box !important;
     }
     .main-column {
         flex: 1 1 auto !important;
         width: calc(100% - var(--right-sidebar-width) - 24px) !important;
         max-width: calc(100% - var(--right-sidebar-width) - 24px) !important;
+    }
+    section.main > div {
+        padding-right: calc(var(--right-sidebar-width) + 24px);
+        box-sizing: border-box;
     }
     @media (max-width: 1100px) {
         .right-sidebar {
@@ -238,20 +242,26 @@ with right_col:
 components.html(
     """
     <script>
-    const rightAnchor = window.parent.document.getElementById("right-sidebar-anchor");
-    if (rightAnchor) {
-        const col = rightAnchor.closest('div[data-testid="column"]');
-        if (col && !col.classList.contains("right-sidebar")) {
-            col.classList.add("right-sidebar");
+    const start = Date.now();
+    const timer = setInterval(() => {
+        const rightAnchor = window.parent.document.getElementById("right-sidebar-anchor");
+        if (rightAnchor) {
+            const col = rightAnchor.closest('div[data-testid="column"]');
+            if (col && !col.classList.contains("right-sidebar")) {
+                col.classList.add("right-sidebar");
+            }
         }
-    }
-    const mainAnchor = window.parent.document.getElementById("main-column-anchor");
-    if (mainAnchor) {
-        const col = mainAnchor.closest('div[data-testid="column"]');
-        if (col && !col.classList.contains("main-column")) {
-            col.classList.add("main-column");
+        const mainAnchor = window.parent.document.getElementById("main-column-anchor");
+        if (mainAnchor) {
+            const col = mainAnchor.closest('div[data-testid="column"]');
+            if (col && !col.classList.contains("main-column")) {
+                col.classList.add("main-column");
+            }
         }
-    }
+        if ((rightAnchor && mainAnchor) || Date.now() - start > 3000) {
+            clearInterval(timer);
+        }
+    }, 50);
     </script>
     """,
     height=0,
