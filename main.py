@@ -144,6 +144,13 @@ st.markdown(
         --footer-height: 80px;
         --input-height: 90px;
     }
+    header[data-testid="stHeader"] {
+        display: none;
+    }
+    div[data-testid="stDecoration"],
+    div[data-testid="stToolbar"] {
+        display: none;
+    }
     [data-testid="collapsedControl"] {
         display: none;
     }
