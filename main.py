@@ -124,7 +124,20 @@ def query_with_retries(
     return {"sql": sql, "rows": None, "error": f"Query failed: {last_error}"}
 
 
-st.set_page_config(page_title="Query Assistant", initial_sidebar_state="expanded")
+DEFAULT_GREETING = {
+    "role": "assistant",
+    "content": (
+        "Hi! Ask questions about your data in plain language. "
+        "Examples: \"How many orders were placed last month?\", "
+        "\"What is the range of order date?\". "
+        "If you want a chart, include words like \"plot\" or use the "
+        "\"Plot results\" toggle. Use the \"Show SQL\" button to see "
+        "the query behind each answer."
+    ),
+}
+
+
+st.set_page_config(page_title="Query Assistant", initial_sidebar_state="expanded", layout="wide")
 st.markdown(
     """
     <style>
@@ -140,19 +153,10 @@ st.markdown(
     button[aria-label="Open sidebar"] {
         display: none;
     }
-    div[data-testid="stHorizontalBlock"]:has(#plot-toggle-anchor) {
+    .right-sidebar {
         position: sticky;
         top: 0;
-        z-index: 999;
-        background: var(--background-color, white);
-        padding: 6px 0;
-    }
-    .plot-toggle-row {
-        position: sticky;
-        top: 0;
-        z-index: 999;
-        background: var(--background-color, white);
-        padding: 6px 0;
+        align-self: flex-start;
     }
     </style>
     """,
@@ -185,37 +189,38 @@ if not db_url:
     )
     st.stop()
 
-st.title("Query Assistant")
 db_display_name = get_db_display_name(db_url)
-with st.container():
-    meta_col, toggle_col = st.columns([4, 1.5], vertical_alignment="center")
-    with meta_col:
-        st.markdown('<div id="plot-toggle-anchor"></div>', unsafe_allow_html=True)
-        st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
-    with toggle_col:
-        show_chart = st.toggle(
-            "Plot results",
-            value=False,
-            key="show_chart",
-            help="Render a chart for numeric results or when your question asks for a chart.",
-        )
+main_col, right_col = st.columns([3.4, 1.1], gap="large")
+with right_col:
+    st.markdown('<div id="right-sidebar-anchor"></div>', unsafe_allow_html=True)
+    st.title("Query Assistant")
+    st.caption(f"Model: {OLLAMA_MODEL} | Database: {db_display_name}")
+    show_chart = st.toggle(
+        "Plot results",
+        value=False,
+        key="show_chart",
+        help="Render a chart for numeric results or when your question asks for a chart.",
+    )
+    if not charts_available():
+        st.caption("Charts disabled until pandas and plotly are installed.")
+    if st.button("Clear chat", use_container_width=True):
+        st.session_state.messages = [DEFAULT_GREETING]
+        st.rerun()
+
 components.html(
     """
     <script>
-    const anchor = window.parent.document.getElementById("plot-toggle-anchor");
+    const anchor = window.parent.document.getElementById("right-sidebar-anchor");
     if (anchor) {
-        const block = anchor.closest('div[data-testid="stHorizontalBlock"]');
-        if (block && !block.classList.contains("plot-toggle-row")) {
-            block.classList.add("plot-toggle-row");
+        const col = anchor.closest('div[data-testid="column"]');
+        if (col && !col.classList.contains("right-sidebar")) {
+            col.classList.add("right-sidebar");
         }
     }
     </script>
     """,
     height=0,
 )
-# Inform the user when charts are disabled.
-if not charts_available():
-    st.caption("Charts disabled until pandas and plotly are installed.")
 
 # Load schema once for the prompt and safety checks.
 try:
@@ -261,103 +266,92 @@ for table_name in sorted(schema.keys()):
     with st.sidebar.expander(table_name):
         st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
 
-# Initialize chat history once.
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Hi! Ask questions about your data in plain language. "
-                "Examples: \"How many orders were placed last month?\", "
-                "\"What is the range of order date?\". "
-                "If you want a chart, include words like \"plot\" or use the "
-                "\"Plot results\" toggle. Use the \"Show SQL\" button to see "
-                "the query behind each answer."
-            ),
-        }
-    ]
+with main_col:
+    # Initialize chat history once.
+    if "messages" not in st.session_state:
+        st.session_state.messages = [DEFAULT_GREETING]
 
-# Re-render chat history.
-for idx, message in enumerate(st.session_state.messages):
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-        # Only render extra details for assistant messages.
-        if message["role"] == "assistant":
-            # Show prior rows if present.
-            if message.get("rows") is not None:
-                render_results(message["rows"], show_chart=message.get("show_chart", False))
-            # Show prior error if present.
-            if message.get("error"):
-                st.error(message["error"])
-            # Optional SQL reveal.
-            if message.get("sql"):
-                render_sql_button(message["sql"], idx)
+    # Re-render chat history.
+    for idx, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            # Only render extra details for assistant messages.
+            if message["role"] == "assistant":
+                # Show prior rows if present.
+                if message.get("rows") is not None:
+                    render_results(message["rows"], show_chart=message.get("show_chart", False))
+                # Show prior error if present.
+                if message.get("error"):
+                    st.error(message["error"])
+                # Optional SQL reveal.
+                if message.get("sql"):
+                    render_sql_button(message["sql"], idx)
 
-user_prompt = st.chat_input("Ask about your data")
-# Only process when the user submits a question.
-if user_prompt:
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
-    # Render the just-submitted question in the current run.
-    with st.chat_message("user"):
-        st.markdown(user_prompt)
-    clarification = needs_clarification(user_prompt, schema)
-    if clarification:
+    user_prompt = st.chat_input("Ask about your data")
+    # Only process when the user submits a question.
+    if user_prompt:
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+        # Render the just-submitted question in the current run.
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+        clarification = needs_clarification(user_prompt, schema)
+        if clarification:
+            with st.chat_message("assistant"):
+                st.markdown(clarification)
+            st.session_state.messages.append({"role": "assistant", "content": clarification})
+            st.stop()
         with st.chat_message("assistant"):
-            st.markdown(clarification)
-        st.session_state.messages.append({"role": "assistant", "content": clarification})
-        st.stop()
-    with st.chat_message("assistant"):
-        with st.spinner("Generating SQL..."):
-            result = query_with_retries(
-                user_prompt,
-                schema_details,
-                schema,
-                db_url,
-                model,
-                QUERY_LIMIT,
-                SQL_MAX_RETRIES,
-            )
+            with st.spinner("Generating SQL..."):
+                result = query_with_retries(
+                    user_prompt,
+                    schema_details,
+                    schema,
+                    db_url,
+                    model,
+                    QUERY_LIMIT,
+                    SQL_MAX_RETRIES,
+                )
 
-        # Surface errors before attempting to answer.
-        if result["error"]:
-            error = result["error"]
-            st.error(error)
+            # Surface errors before attempting to answer.
+            if result["error"]:
+                error = result["error"]
+                st.error(error)
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": "I ran into an error while answering that.",
+                        "error": error,
+                        "sql": result.get("sql"),
+                    }
+                )
+                st.stop()
+
+            sql = result["sql"]
+            rows = result["rows"]
+            plot_requested = show_chart or wants_chart(user_prompt)
+
+            # Summarize results, then show data and optional SQL.
+            answer_rows = rows[: int(get_setting("ANSWER_MAX_ROWS", "50"))]
+            with st.spinner("Generating answer..."):
+                try:
+                    range_answer = infer_range_answer(answer_rows)
+                    # Prefer a direct range explanation when detected.
+                    if range_answer:
+                        answer = range_answer
+                    else:
+                        answer = generate_answer(user_prompt, answer_rows, model)
+                except Exception as exc:
+                    answer = f"I could not generate an answer: {exc}"
+            st.markdown(answer)
+            render_results(rows, show_chart=plot_requested)
+            render_sql_button(sql, len(st.session_state.messages))
+
             st.session_state.messages.append(
                 {
                     "role": "assistant",
-                    "content": "I ran into an error while answering that.",
-                    "error": error,
-                    "sql": result.get("sql"),
+                    "content": answer,
+                    "sql": sql,
+                    "rows": rows,
+                    "show_chart": plot_requested,
                 }
             )
-            st.stop()
-
-        sql = result["sql"]
-        rows = result["rows"]
-        plot_requested = show_chart or wants_chart(user_prompt)
-
-        # Summarize results, then show data and optional SQL.
-        answer_rows = rows[: int(get_setting("ANSWER_MAX_ROWS", "50"))]
-        with st.spinner("Generating answer..."):
-            try:
-                range_answer = infer_range_answer(answer_rows)
-                # Prefer a direct range explanation when detected.
-                if range_answer:
-                    answer = range_answer
-                else:
-                    answer = generate_answer(user_prompt, answer_rows, model)
-            except Exception as exc:
-                answer = f"I could not generate an answer: {exc}"
-        st.markdown(answer)
-        render_results(rows, show_chart=plot_requested)
-        render_sql_button(sql, len(st.session_state.messages))
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer,
-                "sql": sql,
-                "rows": rows,
-                "show_chart": plot_requested,
-            }
-        )
