@@ -141,6 +141,9 @@ st.set_page_config(page_title="Query Assistant", initial_sidebar_state="expanded
 st.markdown(
     """
     <style>
+    :root {
+        --right-sidebar-width: 320px;
+    }
     [data-testid="collapsedControl"] {
         display: none;
     }
@@ -154,9 +157,34 @@ st.markdown(
         display: none;
     }
     .right-sidebar {
-        position: sticky;
+        position: fixed;
         top: 0;
-        align-self: flex-start;
+        right: 0;
+        width: var(--right-sidebar-width);
+        height: 100vh;
+        overflow-y: auto;
+        padding: 12px 16px;
+        background: var(--background-color, white);
+        border-left: 1px solid rgba(0, 0, 0, 0.08);
+        box-sizing: border-box;
+    }
+    .main-column {
+        flex: 1 1 auto !important;
+        width: calc(100% - var(--right-sidebar-width) - 24px) !important;
+        max-width: calc(100% - var(--right-sidebar-width) - 24px) !important;
+    }
+    @media (max-width: 1100px) {
+        .right-sidebar {
+            position: static;
+            width: auto;
+            height: auto;
+            border-left: none;
+            padding: 0;
+        }
+        .main-column {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
     }
     </style>
     """,
@@ -210,11 +238,18 @@ with right_col:
 components.html(
     """
     <script>
-    const anchor = window.parent.document.getElementById("right-sidebar-anchor");
-    if (anchor) {
-        const col = anchor.closest('div[data-testid="column"]');
+    const rightAnchor = window.parent.document.getElementById("right-sidebar-anchor");
+    if (rightAnchor) {
+        const col = rightAnchor.closest('div[data-testid="column"]');
         if (col && !col.classList.contains("right-sidebar")) {
             col.classList.add("right-sidebar");
+        }
+    }
+    const mainAnchor = window.parent.document.getElementById("main-column-anchor");
+    if (mainAnchor) {
+        const col = mainAnchor.closest('div[data-testid="column"]');
+        if (col && !col.classList.contains("main-column")) {
+            col.classList.add("main-column");
         }
     }
     </script>
@@ -267,6 +302,7 @@ for table_name in sorted(schema.keys()):
         st.markdown("\n".join(f"- {col}" for col in schema[table_name]))
 
 with main_col:
+    st.markdown('<div id="main-column-anchor"></div>', unsafe_allow_html=True)
     # Initialize chat history once.
     if "messages" not in st.session_state:
         st.session_state.messages = [DEFAULT_GREETING]
