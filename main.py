@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 # 3) Execute the query, summarize the results, and render tables/charts.
 
 import streamlit as st
+import streamlit.components.v1 as components
 from langchain_ollama.llms import OllamaLLM
 
 from artifacts.config_utils import build_db_url, get_setting, load_dotenv_file
@@ -25,7 +26,13 @@ load_dotenv_file(os.getenv("DOTENV_PATH", ".env"))
 
 def wants_chart(question: str) -> bool:
     """Heuristic for chart requests in the user's question."""
-    return bool(re.search(r"\b(plot|chart|graph|visuali[sz]e|trend|line|bar)\b", question, re.I))
+    return bool(
+        re.search(
+            r"\b(plot|chart|graph|visuali[sz]e|trend|line|bar|histogram|scatter|pie|draw|diagram)\b",
+            question,
+            re.I,
+        )
+    )
 
 
 def get_db_display_name(db_url: str) -> str:
@@ -71,13 +78,8 @@ def needs_clarification(question: str, schema: Dict[str, List[str]]) -> Optional
 
 
 def render_sql_button(sql: str, index: int) -> None:
-    """Show a small button to reveal the SQL for a response."""
-    state_key = f"show_sql_{index}"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = False
-    if st.button("Show SQL", key=f"{state_key}_btn"):
-        st.session_state[state_key] = not st.session_state[state_key]
-    if st.session_state[state_key]:
+    """Show SQL without triggering a rerun that cancels in-flight work."""
+    with st.expander("Show SQL"):
         st.code(sql, wrap_lines=True, language="sql")
 
 # Run SQL with retry loops and model-based fixes.
@@ -136,7 +138,7 @@ st.markdown(
     button[aria-label="Open sidebar"] {
         display: none;
     }
-    div[data-testid="stVerticalBlock"]:has(#plot-toggle-anchor) {
+    .plot-toggle-row {
         position: sticky;
         top: 0;
         z-index: 999;
@@ -188,6 +190,20 @@ with st.container():
             key="show_chart",
             help="Render a chart for numeric results or when your question asks for a chart.",
         )
+components.html(
+    """
+    <script>
+    const anchor = window.parent.document.getElementById("plot-toggle-anchor");
+    if (anchor) {
+        const block = anchor.closest('div[data-testid="stVerticalBlock"]');
+        if (block && !block.classList.contains("plot-toggle-row")) {
+            block.classList.add("plot-toggle-row");
+        }
+    }
+    </script>
+    """,
+    height=0,
+)
 # Inform the user when charts are disabled.
 if not charts_available():
     st.caption("Charts disabled until pandas and plotly are installed.")
