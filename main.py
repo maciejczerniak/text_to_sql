@@ -146,7 +146,7 @@ st.markdown(
     <style>
     :root {
         --header-height: 130px;
-        --footer-height: 16px;
+        --footer-height: 80px;
         --input-height: 90px;
     }
     [data-testid="collapsedControl"] {
@@ -183,18 +183,19 @@ st.markdown(
         max-height: calc(100vh - var(--header-height) - var(--footer-height) - var(--input-height));
         padding-right: 8px;
     }
-    .app-footer {
+    .fixed-footer {
         position: fixed;
         bottom: 0;
         left: 0;
-        right: 0;
-        height: var(--footer-height);
-        border-top: 1px solid rgba(0, 0, 0, 0.08);
-        background: var(--background-color, white);
-        z-index: 999;
+        width: 100%;
+        background-color: white;
+        z-index: 1000;
+        padding: 10px 20px;
+        border-top: 1px solid #ddd;
+        text-align: center;
     }
     section.main > div {
-        padding-bottom: calc(var(--footer-height) + 16px);
+        margin-bottom: 80px;
         box-sizing: border-box;
     }
     div[data-testid="stChatInput"] {
@@ -272,7 +273,14 @@ with header_container:
             st.session_state.messages = [DEFAULT_GREETING]
             st.rerun()
 
-st.markdown('<div class="app-footer"></div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="fixed-footer">
+        <p>© 2026 My App</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # Load schema once for the prompt and safety checks.
 try:
