@@ -246,8 +246,10 @@ db_display_name = get_db_display_name(db_url)
 header_container = st.container()
 with header_container:
     st.markdown('<div id="header-anchor"></div>', unsafe_allow_html=True)
-    header_left, header_right = st.columns([3.2, 1.2], vertical_alignment="center")
+    header_left, header_center, header_right = st.columns([1.2, 3, 1.2], vertical_alignment="center")
     with header_left:
+        st.markdown('')
+    with header_center:
         st.markdown('<div class="app-title">Query Assistant</div>', unsafe_allow_html=True)
         st.markdown(
             f'<div class="app-meta">Model: {OLLAMA_MODEL} | Database: {db_display_name}</div>',
