@@ -14,11 +14,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 from langchain_ollama.llms import OllamaLLM
 
-try:
-    from streamlit_option_menu import option_menu
-except ImportError:
-    option_menu = None
-
 from artifacts.config_utils import build_db_url, get_setting, load_dotenv_file
 from artifacts.db_utils import extract_schema, run_query
 from artifacts.llm_utils import fix_sql_query, generate_answer, infer_range_answer, to_sql_query
@@ -145,7 +140,7 @@ st.markdown(
     """
     <style>
     :root {
-        --header-height: 130px;
+        --header-height: 80px;
         --footer-height: 80px;
         --input-height: 90px;
     }
@@ -162,12 +157,14 @@ st.markdown(
         display: none;
     }
     .app-header {
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        width: 100%;
         z-index: 1000;
         background: var(--background-color, white);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-        padding: 8px 0 6px;
+        border-bottom: 1px solid #ddd;
+        padding: 10px 20px;
     }
     .app-title {
         font-size: 20px;
@@ -177,6 +174,9 @@ st.markdown(
     .app-meta {
         color: rgba(0, 0, 0, 0.6);
         font-size: 0.85rem;
+    }
+    .content {
+        margin-top: var(--header-height);
     }
     .chat-scroll {
         overflow-y: auto;
@@ -241,25 +241,11 @@ with header_container:
     st.markdown('<div id="header-anchor"></div>', unsafe_allow_html=True)
     header_left, header_right = st.columns([3.2, 1.2], vertical_alignment="center")
     with header_left:
-        if option_menu:
-            option_menu(
-                None,
-                ["Chat"],
-                icons=["chat"],
-                orientation="horizontal",
-                styles={
-                    "container": {"padding": "0!important", "background-color": "transparent"},
-                    "nav-link": {"font-size": "0.85rem", "padding": "0 8px"},
-                    "nav-link-selected": {"font-weight": "600"},
-                },
-            )
         st.markdown('<div class="app-title">Query Assistant</div>', unsafe_allow_html=True)
         st.markdown(
             f'<div class="app-meta">Model: {OLLAMA_MODEL} | Database: {db_display_name}</div>',
             unsafe_allow_html=True,
         )
-        if option_menu is None:
-            st.caption("Install `streamlit-option-menu` to enable the top navigation bar.")
     with header_right:
         show_chart = st.toggle(
             "Plot results",
@@ -366,6 +352,9 @@ components.html(
             const block = chatAnchor.closest('div[data-testid="stVerticalBlock"]');
             if (block && !block.classList.contains("chat-scroll")) {
                 block.classList.add("chat-scroll");
+            }
+            if (block && !block.classList.contains("content")) {
+                block.classList.add("content");
             }
         }
         if ((headerAnchor && chatAnchor) || Date.now() - start > 3000) {
